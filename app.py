@@ -55,7 +55,7 @@ def get_conversational_chain(model_name):
     <context>
     Questions: {input}
     """
-    llm = ChatGroq(groq_api_key=groq_api_key, model_name=model_name)
+    llm = ChatGroq(groq_api_key=groq_api_key, model_name=model_name, max_tokens=8192 )
     prompt = ChatPromptTemplate.from_template(prompt_template)
     chain = create_stuff_documents_chain(llm, prompt)
     return chain
@@ -100,9 +100,9 @@ def main():
         st.header("ChatPDF")
     
     st.markdown("""##### Here are some suggestions for you:
-    - Summarize the document.
-    - List keywords and Identify key terms.
-    - What is the primary goal or objective of this document? """, unsafe_allow_html=True)   
+    ▶️ Summarize the document.
+    ▶️ List keywords and Identify key terms.
+    ▶️ What is the primary goal or objective of this document? """, unsafe_allow_html=True)   
     
     if "history" not in st.session_state:
         st.session_state.history = []
@@ -116,12 +116,12 @@ def main():
     # Model options for user selection
     model_options = {
         
-        "Llama 3.1 70B": "llama-3.1-70b-versatile",
-        "Mixtral-8x7B": "mixtral-8x7b-32768",
-        "Llama3-70B": "llama3-70b-8192",
         "Gemma2-9B": "gemma2-9b-it",
+        "Llama3-70B": "llama3-70b-8192",
+        "Llama 3.1 70B": "llama-3.1-70b-versatile",
         # "Llama 3.2 11B Vision": "llama-3.2-11b-vision-preview",
         # "Llama 3.2 90B ": "llama-3.2-90b-vision-preview",
+        "Mixtral-8x7B": "mixtral-8x7b-32768",
         "Whisper-Large-v3": "whisper-large-v3",
 
     }
@@ -211,7 +211,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
