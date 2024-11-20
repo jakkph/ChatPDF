@@ -32,10 +32,57 @@ def get_text_chunks(text):
     return chunks
 
 def get_vector_store(text_chunks):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("faiss_index")
-    return vector_store
+    """
+    Generate a vector store from the given text chunks.
+
+    Args:
+        text_chunks (list): A list of text chunks to process.
+
+    Returns:
+        FAISS: The vector store created from the text chunks.
+
+    Raises:
+        RuntimeError: If embedding fails after retries.
+    """
+    from langchain_community.vectorstores import FAISS
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    import logging
+    import time
+
+    # Initialize logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("VectorStoreLogger")
+
+    # Initialize embeddings
+    try:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    except Exception as e:
+        logger.error("Failed to initialize embeddings: %s", str(e))
+        raise
+
+    vector_store = None
+    retry_count = 3
+
+    for attempt in range(retry_count):
+        try:
+            # Clean text chunks (remove invalid entries)
+            text_chunks = [chunk.strip() for chunk in text_chunks if chunk and chunk.strip()]
+            if not text_chunks:
+                raise ValueError("No valid text chunks available for embedding.")
+
+            # Generate embeddings and vector store
+            logger.info("Starting embedding process...")
+            vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+            vector_store.save_local("faiss_index")
+            logger.info("Vector store successfully created and saved.")
+            return vector_store
+        except Exception as e:
+            logger.warning("Attempt %d: Failed to embed documents: %s", attempt + 1, str(e))
+            time.sleep(2)  # Optional delay between retries
+
+    logger.error("Failed to embed documents after %d attempts.", retry_count)
+    raise RuntimeError("Embedding process failed. Check logs for details.")
+
 
 def get_conversational_chain(model_name):
     prompt_template = """
