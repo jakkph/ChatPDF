@@ -1,4 +1,4 @@
-import os   
+import os
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -26,10 +26,13 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000, chunk_overlap=200)
     chunks = text_splitter.split_text(text)
     return chunks
+
 
 def get_vector_store(text_chunks):
     """
@@ -66,9 +69,11 @@ def get_vector_store(text_chunks):
     for attempt in range(retry_count):
         try:
             # Clean text chunks (remove invalid entries)
-            text_chunks = [chunk.strip() for chunk in text_chunks if chunk and chunk.strip()]
+            text_chunks = [chunk.strip()
+                           for chunk in text_chunks if chunk and chunk.strip()]
             if not text_chunks:
-                raise ValueError("No valid text chunks available for embedding.")
+                raise ValueError(
+                    "No valid text chunks available for embedding.")
 
             # Generate embeddings and vector store
             logger.info("Starting embedding process...")
@@ -77,7 +82,8 @@ def get_vector_store(text_chunks):
             logger.info("Vector store successfully created and saved.")
             return vector_store
         except Exception as e:
-            logger.warning("Attempt %d: Failed to embed documents: %s", attempt + 1, str(e))
+            logger.warning(
+                "Attempt %d: Failed to embed documents: %s", attempt + 1, str(e))
             time.sleep(2)  # Optional delay between retries
 
     logger.error("Failed to embed documents after %d attempts.", retry_count)
@@ -107,14 +113,17 @@ def get_conversational_chain(model_name):
     chain = create_stuff_documents_chain(llm, prompt)
     return chain
 
-def user_input(user_question,model_name):
+
+def user_input(user_question, model_name):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    vector_store = FAISS.load_local(
+        "faiss_index", embeddings, allow_dangerous_deserialization=True)
     retriever = vector_store.as_retriever()
     chain = get_conversational_chain(model_name)
     retrieval_chain = create_retrieval_chain(retriever, chain)
     response = retrieval_chain.invoke({'input': user_question})
     return response['answer'], response['context']
+
 
 def generate_pdf(chat_history):
     pdf = FPDF()
@@ -130,27 +139,25 @@ def generate_pdf(chat_history):
     return pdf
 
 
-
-
 def main():
-    st.set_page_config(page_title="Chat with PDF", 
-                       page_icon="https://i.postimg.cc/RZzRwFCw/tab-icon.png", 
-                       layout="wide", 
+    st.set_page_config(page_title="Chat with PDF",
+                       page_icon="https://i.postimg.cc/RZzRwFCw/tab-icon.png",
+                       layout="wide",
                        initial_sidebar_state="expanded",
                        menu_items={'About': "# This is a header. This is an *extremely* cool app!"})
 
-    logo_url = "https://i.postimg.cc/yY3dnD9S/logo.png"  
+    logo_url = "https://i.postimg.cc/yY3dnD9S/logo.png"
     col1, col2 = st.columns([1, 17])
     with col1:
-        st.image(logo_url, width=55) 
+        st.image(logo_url, width=55)
     with col2:
         st.header("ChatPDF")
-    
+
     st.markdown("""##### Here are some suggestions for you:
     - Summarize the document.
     - List keywords and Identify key terms.
-    - What is the primary goal or objective of this document? """, unsafe_allow_html=True)   
-    
+    - What is the primary goal or objective of this document? """, unsafe_allow_html=True)
+
     if "history" not in st.session_state:
         st.session_state.history = []
     if "last_question" not in st.session_state:
@@ -162,28 +169,27 @@ def main():
 
     # Model options for user selection
     model_options = {
-        
+        "Llama 3.2 3B": "llama-3.2-3b-preview",
+        "Llama 3.2 90B ": "llama-3.2-90b-vision-preview",
         "Llama 3.1 70B": "llama-3.1-70b-versatile",
         "Mixtral-8x7B": "mixtral-8x7b-32768",
-        "Llama3-70B": "llama3-70b-8192",
         "Gemma2-9B": "gemma2-9b-it",
         # "Llama 3.2 11B Vision": "llama-3.2-11b-vision-preview",
-        # "Llama 3.2 90B ": "llama-3.2-90b-vision-preview",
         "Whisper-Large-v3": "whisper-large-v3",
-
     }
-    
+
     with st.sidebar:
         st.title("Menu")
-        
+
         # Add model selection in the sidebar
         selected_model = st.selectbox(
             "Select LLM Model", options=list(model_options.keys())
         )
         selected_model_name = model_options[selected_model]
         st.write(f"Selected model: {selected_model_name}")
-        
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+
+        pdf_docs = st.file_uploader(
+            "Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
         if st.button("Submit & Process"):
             if pdf_docs:
                 with st.spinner("Processing..."):
@@ -221,22 +227,28 @@ def main():
 
         if st.session_state.reset_confirmed:
             st.success("Chat history has been reset")
-            st.session_state.reset_confirmed = False 
-        st.markdown("<p style=' margin-top: 200px;'>Powered by Llama 3</p>", unsafe_allow_html=True)
+            st.session_state.reset_confirmed = False
+        st.markdown(
+            "<p style=' margin-top: 200px;'>Powered by Llama 3</p>", unsafe_allow_html=True)
 
     # Use the selected model for the conversation
     for msg in st.session_state.history:
-        st.chat_message(msg["type"], avatar=msg["avatar"]).write(msg["content"])
-    
+        st.chat_message(msg["type"], avatar=msg["avatar"]
+                        ).write(msg["content"])
+
     if user_question := st.chat_input("Ask a Question from the PDF Files"):
-        st.chat_message("human", avatar='https://i.postimg.cc/261JMMfm/user-3.png').write(user_question)
+        st.chat_message(
+            "human", avatar='https://i.postimg.cc/261JMMfm/user-3.png').write(user_question)
         answer, context = user_input(user_question, selected_model_name)
-        st.chat_message("ai", avatar='https://i.postimg.cc/fLSW0H9V/chat-16273634.png').write(answer)
-        
+        st.chat_message(
+            "ai", avatar='https://i.postimg.cc/fLSW0H9V/chat-16273634.png').write(answer)
+
         # Append conversation to history
-        st.session_state.history.append({"type": "human", "content": user_question, "avatar": 'https://i.postimg.cc/261JMMfm/user-3.png'})
-        st.session_state.history.append({"type": "ai", "content": answer, "avatar": 'https://i.postimg.cc/fLSW0H9V/chat-16273634.png'})
-        
+        st.session_state.history.append(
+            {"type": "human", "content": user_question, "avatar": 'https://i.postimg.cc/261JMMfm/user-3.png'})
+        st.session_state.history.append(
+            {"type": "ai", "content": answer, "avatar": 'https://i.postimg.cc/fLSW0H9V/chat-16273634.png'})
+
         # Store the last question for regenerating
         st.session_state.last_question = user_question
 
@@ -244,16 +256,20 @@ def main():
     if st.session_state.last_question:
         if st.button("Regenerate"):
             # Display the last question again
-            st.chat_message("human", avatar='https://i.postimg.cc/261JMMfm/user-3.png').write(st.session_state.last_question)
-            
+            st.chat_message(
+                "human", avatar='https://i.postimg.cc/261JMMfm/user-3.png').write(st.session_state.last_question)
+
             # Generate new response for the same question
-            answer, context = user_input(st.session_state.last_question, selected_model_name)
-            
+            answer, context = user_input(
+                st.session_state.last_question, selected_model_name)
+
             # Display regenerated response
-            st.chat_message("ai", avatar='https://i.postimg.cc/fLSW0H9V/chat-16273634.png').write(answer)
-            
+            st.chat_message(
+                "ai", avatar='https://i.postimg.cc/fLSW0H9V/chat-16273634.png').write(answer)
+
             # Add regenerated response to history
-            st.session_state.history.append({"type": "ai", "content": answer, "avatar": 'https://i.postimg.cc/fLSW0H9V/chat-16273634.png'})
+            st.session_state.history.append(
+                {"type": "ai", "content": answer, "avatar": 'https://i.postimg.cc/fLSW0H9V/chat-16273634.png'})
 
 
 if __name__ == "__main__":
